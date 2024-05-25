@@ -111,6 +111,11 @@ public class Main implements AntMain {
     private String loggerClassname = null;
 
     /**
+     * The name of the target for visualization via jgraphx
+     */
+    private String visualizationTargetName = null;
+
+    /**
      * The Ant InputHandler class.  There may be only one input
      * handler.
      */
@@ -373,6 +378,9 @@ public class Main implements AntMain {
             } else if (arg.equals("-projecthelp") || arg.equals("-p")) {
                 // set the flag to display the targets and quit
                 projectHelp = true;
+            } else if (arg.equals("-visualize")) {
+                // set the flag to visualize build graph and quit
+                i = handleArgVisualize(args, i);
             } else if (arg.equals("-find") || arg.equals("-s")) {
                 searchForFile = true;
                 // eat up next arg if present, default to build.xml
@@ -577,6 +585,21 @@ public class Main implements AntMain {
         return pos;
     }
 
+    /** Handle the -visualize argument. */
+    private int handleArgVisualize(final String[] args, int pos) {
+        if (visualizationTargetName != null) {
+            throw new BuildException(
+                    "Only one visualization target may be specified.");
+        }
+        try {
+            visualizationTargetName = args[++pos];
+        } catch (final ArrayIndexOutOfBoundsException aioobe) {
+            throw new BuildException(
+                    "You must specify a visualization target name when using the -visualize argument");
+        }
+        return pos;
+    }
+
     /** Handle the -inputhandler argument. */
     private int handleArgInputHandler(final String[] args, int pos) {
         if (inputHandlerClassname != null) {
@@ -758,7 +781,7 @@ public class Main implements AntMain {
                 System.setErr(new PrintStream(new DemuxOutputStream(project, true)));
 
 
-                if (!projectHelp) {
+                if (!projectHelp && visualizationTargetName == null) {
                     project.fireBuildStarted();
                 }
 
@@ -808,6 +831,11 @@ public class Main implements AntMain {
                     return;
                 }
 
+                if (visualizationTargetName != null) {
+                    Visualizer.visualize(project, visualizationTargetName);
+                    return;
+                }
+
                 // make sure that we have a target to execute
                 if (targets.isEmpty()) {
                     if (project.getDefaultTarget() != null) {
@@ -825,7 +853,7 @@ public class Main implements AntMain {
             error = exc;
             throw exc;
         } finally {
-            if (!projectHelp) {
+            if (!projectHelp && visualizationTargetName == null) {
                 try {
                     project.fireBuildFinished(error);
                 } catch (final Throwable t) {
@@ -969,6 +997,7 @@ public class Main implements AntMain {
         System.out.println("Options: ");
         System.out.println("  -help, -h              print this message and exit");
         System.out.println("  -projecthelp, -p       print project help information and exit");
+        System.out.println("  -visualize <target>    saves build.xml target graph to build.png");
         System.out.println("  -version               print the version information and exit");
         System.out.println("  -diagnostics           print information that might be helpful to");
         System.out.println("                         diagnose or report problems and exit");
